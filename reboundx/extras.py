@@ -146,6 +146,9 @@ class Extras(Structure):
         clibreboundx.rebx_rad_calc_particle_radius.restype = c_double
         return clibreboundx.rebx_rad_calc_particle_radius(byref(self), byref(params), c_double(beta), c_double(density), c_double(Q_pr), c_double(L))
     
+    def gr_energy(self, sim):
+        clibreboundx.rebxtools_gr_energy.restype = c_double
+        return clibreboundx.rebxtools_gr_energy(byref(sim))
 #######################################
 # Effect parameter class definitions
 #######################################

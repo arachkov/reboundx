@@ -48,4 +48,6 @@ void rebxtools_update_com_without_particle(struct reb_particle* const com, const
 
 void rebxtools_get_com(const struct reb_simulation* const sim, const int first_N, struct reb_particle* com);
 
+double rebxtools_gr_energy(const struct reb_simulation* const sim);
+
 #endif

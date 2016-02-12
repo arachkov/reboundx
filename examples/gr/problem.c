@@ -12,14 +12,18 @@
 #include "rebound.h"
 #include "reboundx.h"
 
+//void heartbeat(struct reb_simulation* sim);
+//double E_0;
+
 int main(int argc, char* argv[]){
     struct reb_simulation* sim = reb_create_simulation();
+    sim->heartbeat = heartbeat;
 
     struct reb_particle p = {0}; 
     p.m     = 1.;   
     reb_add(sim, p); 
 
-    double m = 0.;
+    double m = 1.e-6;
     double a = 1.e-4; // put planet close to enhance precession so it's visible in visualization (this would put planet inside the Sun!)
     double e = 0.2;
     double omega = 0.;
@@ -34,6 +38,16 @@ int main(int argc, char* argv[]){
     rebx_add_gr(rebx, &sim->particles[0], c); // add postnewtonian correction, treating only particles[0] as massive for GR corrections
     /*See reboundx.readthedocs.org for more options.*/
     double tmax = 5.e-2;
+
+    //E_0 = rebxtools_gr_energy(sim);
     reb_integrate(sim, tmax); 
     rebx_free(rebx);    // this explicitly frees all the memory allocated by REBOUNDx 
 }
+
+/*void heartbeat(struct reb_simulation* sim){
+    if (reb_output_check(sim, 1.e-4)){
+        double energy = rebxtools_gr_energy(sim); 
+        printf("%f\t%e\n", sim->t, fabs(energy-E_0)/fabs(E_0));
+    }
+}*/
+            

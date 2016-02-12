@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "rebxtools.h"
+#include "reboundx.h"
 
 static const struct reb_orbit reb_orbit_nan = {.r = NAN, .v = NAN, .h = NAN, .P = NAN, .n = NAN, .a = NAN, .e = NAN, .inc = NAN, .Omega = NAN, .omega = NAN, .pomega = NAN, .f = NAN, .M = NAN, .l = NAN};
 
@@ -255,3 +256,70 @@ void rebxtools_get_com(const struct reb_simulation* const sim, const int first_N
         rebxtools_update_com_with_particle(com, &particles[i]);
     }
 }
+
+double rebxtools_gr_energy(const struct reb_simulation* const sim){
+	struct rebx_extras* rebx = sim->extras;
+	struct rebx_effect* current = rebx->effects;
+    struct rebx_params_gr* params = NULL;
+	while(current != NULL){
+        if(current->effect_type == rebx_hash("gr")){
+		    params = current->paramsPtr;
+        }
+		current = current->next;
+	}
+    if(params == NULL){
+        fprintf(stderr, "didn't find gr effect\n");
+        exit(1);
+    }
+
+    const double C = params->c;
+    const int source_index = params->source_index;
+	const struct reb_particle* const particles = sim->particles;
+	const int _N_real = sim->N - sim->N_var;
+	const double G = sim->G;
+	const double mu = G*particles[source_index].m;
+
+	double e_kin = 0.;
+	double e_pot = 0.;
+	double e_pn  = 0.;
+	struct reb_particle source = particles[source_index];
+	for (int i=0;i<_N_real;i++){
+		struct reb_particle pi = particles[i];
+		if (i != source_index){
+			double dx = pi.x;
+			double dy = pi.y;
+			double dz = pi.z;
+			double r2 = dx*dx + dy*dy + dz*dz;
+			double r = sqrt(r2);
+
+			double vx = pi.vx;
+			double vy = pi.vy;
+			double vz = pi.vz;
+			double v2 = vx*vx + vy*vy + vz*vz;
+			
+			double A = 1. - (v2/2. + 3.*mu/r)/(C*C);
+			double B = sqrt(v2)/A;
+			double v_tilde2 = B*B;
+
+			e_kin += 0.5*pi.m*v_tilde2;
+			e_pn += (mu*mu*pi.m/(2.*r2) - v_tilde2*v_tilde2*pi.m/8. - 3.*mu*v_tilde2*pi.m/(2.*r))/(C*C);
+		}		
+		else{
+			double source_v2 = source.vx*source.vx + source.vy*source.vy + source.vz*source.vz;
+			e_kin += 0.5 * source.m * source_v2;
+		}
+		for (int j=i+1; j<_N_real; j++){
+			struct reb_particle pj = particles[j];
+			double dx = pi.x - pj.x;
+			double dy = pi.y - pj.y;
+			double dz = pi.z - pj.z;	
+			double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+			e_pot -= G*pi.m*pj.m/r;
+		}
+	}
+	return e_kin + e_pot + e_pn;
+}
+
+
+

@@ -55,6 +55,41 @@ void rebx_gr(struct reb_simulation* const sim, struct rebx_effect* gr){
     const int _N_real = sim->N - sim->N_var;
     const double G = sim->G;
     struct reb_particle* const particles = sim->particles;
+	const double mu = G*particles[source_index].m;
+    for (int i=0; i<_N_real; i++){
+        if(i == source_index){
+            continue;
+        }
+		struct reb_particle pi = particles[i];
+		
+		double dx = pi.x;
+		double dy = pi.y;
+		double dz = pi.z;
+		double r2 = dx*dx + dy*dy + dz*dz;
+		double r = sqrt(r2);
+		double vx = pi.vx;
+		double vy = pi.vy;
+		double vz = pi.vz;
+		double v2 = vx*vx + vy*vy + vz*vz;
+
+		double a1_x = (mu*mu*dx/(r2*r2) - 3.*mu*v2*dx/(2.*r2*r))/(C*C);
+		double a1_y = (mu*mu*dy/(r2*r2) - 3.*mu*v2*dy/(2.*r2*r))/(C*C);
+		double a1_z = (mu*mu*dz/(r2*r2) - 3.*mu*v2*dz/(2.*r2*r))/(C*C);
+
+		double va = vx*pi.ax + vy*pi.ay + vz*pi.az;
+		double rv = dx*vx + dy*vy + dz*vz;
+		
+		particles[i].ax += a1_x-(va*vx + v2*pi.ax/2. + 3.*mu*(pi.ax*r-vx*rv/r)/r2)/(C*C);
+		particles[i].ay += a1_y-(va*vy + v2*pi.ay/2. + 3.*mu*(pi.ay*r-vy*rv/r)/r2)/(C*C);
+		particles[i].az += a1_z-(va*vz + v2*pi.az/2. + 3.*mu*(pi.az*r-vz*rv/r)/r2)/(C*C);
+    }	
+
+    /*const struct rebx_params_gr* const params = gr->paramsPtr;
+    const double C = params->c;
+    const int source_index = params->source_index;
+    const int _N_real = sim->N - sim->N_var;
+    const double G = sim->G;
+    struct reb_particle* const particles = sim->particles;
     const struct reb_particle source = sim->particles[source_index];
     for (int i=0; i<_N_real; i++){
         if(i == source_index){
@@ -86,6 +121,6 @@ void rebx_gr(struct reb_simulation* const sim, struct rebx_effect* gr){
         //particles[source_index].ax -= massratio*dax;
         //particles[source_index].ay -= massratio*day;
         //particles[source_index].az -= massratio*daz;
-    }
+    }*/
 }
 
