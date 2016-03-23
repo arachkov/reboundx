@@ -104,6 +104,10 @@ void rebx_gr(struct reb_simulation* const sim, struct rebx_effect* gr){
 		particles[i].ax += a1_x-(va*vx + v2*ax/2. + 3.*mu*(ax*r-vx*rv/r)/r2)/(C*C);
 		particles[i].ay += a1_y-(va*vy + v2*ay/2. + 3.*mu*(ay*r-vy*rv/r)/r2)/(C*C);
 		particles[i].az += a1_z-(va*vz + v2*az/2. + 3.*mu*(az*r-vz*rv/r)/r2)/(C*C);
+
+        particles[0].ax -= particles[i].m/particles[0].m*(a1_x-(va*vx + v2*ax/2. + 3.*mu*(ax*r-vx*rv/r)/r2)/(C*C));
+        particles[0].ay -= particles[i].m/particles[0].m*(a1_y-(va*vy + v2*ay/2. + 3.*mu*(ay*r-vy*rv/r)/r2)/(C*C));
+        particles[0].az -= particles[i].m/particles[0].m*(a1_z-(va*vz + v2*az/2. + 3.*mu*(az*r-vz*rv/r)/r2)/(C*C));
     }	
 }
 
