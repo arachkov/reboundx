@@ -55,9 +55,9 @@ void rebx_gr_potential(struct reb_simulation* const sim, struct rebx_effect* gr)
             continue;
         }
         const struct reb_particle p = particles[i];
-        const double dx = p.x - source.x;
-        const double dy = p.y - source.y;
-        const double dz = p.z - source.z;
+        const double dx = p.x;// - source.x;
+        const double dy = p.y;// - source.y;
+        const double dz = p.z;// - source.z;
         const double r2 = dx*dx + dy*dy + dz*dz;
         const double prefac = prefac1/(r2*r2);
         
@@ -86,9 +86,9 @@ double rebx_gr_potential_hamiltonian(const struct reb_simulation* const sim, con
             continue;
         }
         struct reb_particle pi = particles[i];
-        double dx = pi.x - source.x;
-        double dy = pi.y - source.y;
-        double dz = pi.z - source.z;
+        double dx = pi.x;// - source.x;
+        double dy = pi.y;// - source.y;
+        double dz = pi.z;// - source.z;
         double r2 = dx*dx + dy*dy + dz*dz;
         H -= prefac*pi.m/r2;
     }		
