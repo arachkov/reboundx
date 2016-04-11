@@ -40,7 +40,7 @@ struct rebx_params_gr_potential* rebx_add_gr_potential(struct rebx_extras* rebx,
 }
 
 void rebx_gr_potential(struct reb_simulation* const sim, struct rebx_effect* gr){
-    // Nobili & Roxburgh 1986
+	// Nobili & Roxburgh 1986
     const struct rebx_params_gr_potential* const params = gr->paramsPtr;
     const double C = params->c;
     const int source_index = params->source_index;
