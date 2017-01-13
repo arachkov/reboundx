@@ -63,8 +63,19 @@
 #include "rebound.h"
 #include "reboundx.h"
 
-static void rebx_calculate_force(struct reb_simulation* const sim, const double f_quad, const double moon_mass_quad, const int tides_quad, const int i){
+// Machine independent implementation of pow(*,9). 
+static double sqrt9(double a){
+    double x = 1.;
+    for (int k=0; k<20;k++){  // A smaller number should be ok too.
+        double x8 = x*x*x*x*x*x*x*x;
+        x += (a/x8-x)/9.;
+    }
+    return x;
+}
 
+static void rebx_calculate_force(struct reb_simulation* const sim, const double f_quad, const double moon_mass_quad, const int tides_quad, const int i){
+    double a1 = 0.10283022841433383;
+    double a2 = -0.016869154631638014;
     struct reb_particle* const particles = sim->particles;
     const struct reb_particle source = sim->particles[0];
     const struct reb_particle p = particles[i];
@@ -88,7 +99,6 @@ static void rebx_calculate_force(struct reb_simulation* const sim, const double 
 
     const double A = (-3.0/4.0)*sim->G*source.m*(f_quad)*R_earthmoon*R_earthmoon*massratio;
     const double prefac = A*pow(r2, -5./2.);
-
     particles[i].ax += prefac*dx;
     particles[i].ay += prefac*dy;
     particles[i].az += prefac*dz;
