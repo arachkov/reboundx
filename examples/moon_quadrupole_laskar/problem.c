@@ -36,8 +36,14 @@ int main(int argc, char* argv[]){
 
     struct reb_particle* ps = sim->particles;
 
-    double* f_mql = rebx_add_param(&ps[1], "f_mql", REBX_TYPE_DOUBLE);
+    double* f_quad = rebx_add_param(&ps[1], "f_quad", REBX_TYPE_DOUBLE);
     *f_mql = 0.9473;
+
+    double* moon_mass_quad = rebx_add_param(&ps[1], "moon_mass_quad", REBX_TYPE_DOUBLE);
+    *moon_mass_quad = ;
+
+    int* tides_quad = rebx_add_param(&ps[1], "tide_quad", REBX_TYPE_INT);
+    *tides_quad = 0; // set to 0 to turn tides off, set to 1 to turn tides on
 
 /*  old stuff
     double* m_ratio_earthmoon_mql = rebx_add_param(&ps[1], "m_ratio_earthmoon_mql", REBX_TYPE_DOUBLE);
