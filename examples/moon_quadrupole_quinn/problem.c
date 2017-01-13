@@ -30,20 +30,21 @@ int main(int argc, char* argv[]){
     reb_add(sim, planet);
     reb_move_to_com(sim);
     
-    rebx_add(rebx, "moon_quadrupole_laskar");
+    rebx_add(rebx, "moon_quadrupole_quinn");
     /* We first choose a power (must be a double!) for our central force (here F goes as r^-1).
      * We then need to add it to the particle(s) that will act as central sources for this force.*/
 
     struct reb_particle* ps = sim->particles;
+    double* f_mqq = rebx_add_param(&ps[1], "f_mqq", REBX_TYPE_DOUBLE);
+    *f_mqq = 0.9473;
 
-    double* f_quad = rebx_add_param(&ps[1], "f_quad", REBX_TYPE_DOUBLE);
-    *f_mql = 0.9473;
+    double* moon_mass_mqq = rebx_add_param(&ps[1], "moon_mass_mqq", REBX_TYPE_DOUBLE);
+    *moon_mass_mqq = 3.69e-8;
 
-    double* moon_mass_quad = rebx_add_param(&ps[1], "moon_mass_quad", REBX_TYPE_DOUBLE);
-    *moon_mass_quad = ;
-
-    int* tides_quad = rebx_add_param(&ps[1], "tide_quad", REBX_TYPE_INT);
-    *tides_quad = 0; // set to 0 to turn tides off, set to 1 to turn tides on
+    double* moon_distance_mqq = rebx_add_param(&ps[1], "moon_distance_mqq", REBX_TYPE_DOUBLE);
+    *moon_distance_mqq = 0.00257;
+ //   int* laskar_tides_mqq = rebx_add_param(&ps[1], "laskar_tides_mqq", REBX_TYPE_INT);
+ //   *laskar_tides_mqq = 1; // set to 0 to turn tides off, set to 1 to turn tides on
 
 /*  old stuff
     double* m_ratio_earthmoon_mql = rebx_add_param(&ps[1], "m_ratio_earthmoon_mql", REBX_TYPE_DOUBLE);
@@ -65,13 +66,12 @@ int main(int argc, char* argv[]){
     /* We can also use the function rebx_central_force_Acentral to calculate the Acentral required
      * for particles[1] (around primary particles[0]) to have a pericenter precession rate of
      * pomegadot, given a gammacentral value: */
-    
-    double E0 = rebx_moon_quadrupole_laskar_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
+    double E0 = rebx_moon_quadrupole_quinn_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
     double tmax = 3.e4*2.*M_PI;
     sim->integrator = REB_INTEGRATOR_IAS15;
     reb_integrate(sim, tmax); 
-    rebx_free(rebx);    // this explicitly frees all the memory allocated by REBOUNDx 
-    double Ef = rebx_moon_quadrupole_laskar_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
+    double Ef = rebx_moon_quadrupole_quinn_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
     printf("%e\n",(Ef-E0)/E0);
+    rebx_free(rebx);    // this explicitly frees all the memory allocated by REBOUNDx 
     reb_free_simulation(sim);
 }

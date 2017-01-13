@@ -188,8 +188,8 @@ struct rebx_effect* rebx_add(struct rebx_extras* rebx, const char* name){
     else if (effect->hash == reb_hash("track_min_distance")){
         effect->ptm = rebx_track_min_distance;
     }
-    else if (effect->hash == reb_hash("moon_quadrupole_laskar")){
-        effect->force = rebx_moon_quadrupole_laskar;
+    else if (effect->hash == reb_hash("moon_quadrupole_quinn")){
+        effect->force = rebx_moon_quadrupole_quinn;
     }
     else{
         char str[100]; 

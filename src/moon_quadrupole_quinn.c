@@ -1,4 +1,4 @@
-/** * @file moon_quadrupole_laskar.c
+/** * @file moon_quadrupole_quinn.c
  * @brief   Models Earth's moon as a quadrupole around the Earth interacting with the Sun
  * @author  Aleksandar Rachkov, Dan Tamayo <tamayo.daniel@gmail.com>
  * 
@@ -30,8 +30,8 @@
  * Authors                 A. Rachkov, D. Tamayo
  * Implementation Paper    *In progress*
  * Based on                Quinn et al., 1991, Laskar & Gastineau, 2009 
- * C Example               :ref:`c_example_moon_quadrupole_laskar`
- * Python Example          `MoonQuadrupoleLaskar.ipynb <https://github.com/dtamayo/reboundx/blob/master/ipython_examples/MoonQuadrupoleLaskar.ipynb>`_.
+ * C Example               :ref:`c_example_moon_quadrupole_quinn`
+ * Python Example          `MoonQuadrupoleQuinn.ipynb <https://github.com/dtamayo/reboundx/blob/master/ipython_examples/MoonQuadrupoleQuinn.ipynb>`_.
  * ======================= ===============================================
  * 
  * This effect adds a correction term for
@@ -46,7 +46,7 @@
  * ============================ =========== ==================================================================
  * Field (C type)               Required    Description
  * ============================ =========== ==================================================================
- * m_ratio_earthmoon_mql (double)             Yes         Earth mass over Moon mass ratio.
+ * m_ratio_planetmoon_mql (double)             Yes         Earth mass over Moon mass ratio.
  * a0_mql (double)         Yes         a0 parameter from the tidal dissipation model, equation 1 in Supplementary Material from Laskar & Gastineau, 2009.
  * a1_mql (double)         Yes         a1 parameter from the tidal dissipation model, equation 1 in Supplementary Material from Laskar & Gastineau, 2009.
  * a2_mql (double)         Yes         a2 parameter from the tidal dissipation model, equation 1 in Supplementary Material from Laskar & Gastineau, 2009.
@@ -73,7 +73,7 @@ static double sqrt9(double a){
     return x;
 }
 
-static void rebx_calculate_force(struct reb_simulation* const sim, const double f_quad, const double moon_mass_quad, const int tides_quad, const int i){
+static void rebx_calculate_force(struct reb_simulation* const sim, const double f_mqq, const double moon_mass_mqq, double moon_distance_mqq, const int i){
     double a1 = 0.10283022841433383;
     double a2 = -0.016869154631638014;
     struct reb_particle* const particles = sim->particles;
@@ -84,21 +84,17 @@ static void rebx_calculate_force(struct reb_simulation* const sim, const double 
     const double dz = p.z - source.z;
     const double r2 = dx*dx + dy*dy + dz*dz;
 
-    const double R0 = 0.0025696;
-    const double alpha_quad = ;
-    const double a1 = ;
-    const double a2 = ;
+    const int* const laskar_tides_mqq = rebx_get_param_check(&particles[i], "laskar_tides_mqq", REBX_TYPE_INT);
 
-    if (tides_quad == 0){ // turn tides off
-        double R_earthmoon = R0;
+    if (laskar_tides_mqq){
+        double a = 1.0+(9.0*a1)*1.e-9*2.*M_PI*sim->t+a2*1.e-18*4.*M_PI*M_PI*sim->t*sim->t;
+        moon_distance_mqq *= sqrt9(a);
     }
-    else{ // turn tides on
-        double R_earthmoon = R0*pow((1.0+(a1/alpha_mql)*1.e-9*2.*M_PI*sim->t+a2_mql*1.e-18*4.*M_PI*M_PI*sim->t*sim->t),alpha_mql);
-    }
-    double massratio = p.m*moon_mass_quad/((p.m + moon_mass_quad)*(p.m + moon_mass_quad));
 
-    const double A = (-3.0/4.0)*sim->G*source.m*(f_quad)*R_earthmoon*R_earthmoon*massratio;
-    const double prefac = A*pow(r2, -5./2.);
+    double massratio = p.m*moon_mass_mqq/((p.m + moon_mass_mqq)*(p.m + moon_mass_mqq));
+
+    const double A = (-3.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
+    const double prefac = A*(1.0/(r2*r2*sqrt(r2)));
     particles[i].ax += prefac*dx;
     particles[i].ay += prefac*dy;
     particles[i].az += prefac*dz;
@@ -107,55 +103,65 @@ static void rebx_calculate_force(struct reb_simulation* const sim, const double 
     particles[0].az -= p.m/source.m*prefac*dz;
 }
 
-void rebx_moon_quadrupole_laskar(struct reb_simulation* const sim, struct rebx_effect* const effect){ 
+void rebx_moon_quadrupole_quinn(struct reb_simulation* const sim, struct rebx_effect* const effect){ 
     const int N_real = sim->N - sim->N_var;
     struct reb_particle* const particles = sim->particles;
     for (int i=1; i<N_real; i++){
-        const double* const f_quad = rebx_get_param_check(&particles[i], "f_quad", REBX_TYPE_DOUBLE);
-        if (f_quad != NULL){
-            const double* const moon_mass_quad = rebx_get_param_check(&particles[i], "moon_mass_quad", REBX_TYPE_DOUBLE);
-            if (moon_mass_quad != NULL){
-		        const int* const tides_quad = rebx_get_param_check(&particles[i], "tides_quad", REBX_TYPE_DOUBLE);
-		        if (tides_quad != NULL){
-                    rebx_calculate_force(sim, *f_quad, *moon_mass_quad, *tides_quad, i); // only calculates force if all parameters set
+        const double* const f_mqq = rebx_get_param_check(&particles[i], "f_mqq", REBX_TYPE_DOUBLE);
+        if (f_mqq != NULL){
+            const double* const moon_mass_mqq = rebx_get_param_check(&particles[i], "moon_mass_mqq", REBX_TYPE_DOUBLE);
+            if (moon_mass_mqq != NULL){
+		        const double* const moon_distance_mqq = rebx_get_param_check(&particles[i], "moon_distance_mqq", REBX_TYPE_DOUBLE);
+		        if (moon_distance_mqq != NULL){
+                    rebx_calculate_force(sim, *f_mqq, *moon_mass_mqq, *moon_distance_mqq, i); // only calculates force if all parameters set
                 }
             }
         }
     }
 }
 
-static double rebx_calculate_hamiltonian(struct reb_simulation* const sim, const double m_ratio_earthmoon_mql, const double a0_mql, const double a1_mql, const double a2_mql, const double alpha_mql, const double f_mql, const int i){
-    const struct reb_particle* const particles = sim->particles;
-    const struct reb_particle source = particles[0];
+static double rebx_calculate_hamiltonian(struct reb_simulation* const sim, const double f_mqq, const double moon_mass_mqq, double moon_distance_mqq, const int i){
+
+    double a1 = 0.10283022841433383;
+    double a2 = -0.016869154631638014;
+    struct reb_particle* const particles = sim->particles;
+    const struct reb_particle source = sim->particles[0];
     const struct reb_particle p = particles[i];
     const double dx = p.x - source.x;
     const double dy = p.y - source.y;
     const double dz = p.z - source.z;
     const double r2 = dx*dx + dy*dy + dz*dz;
 
-    double r_earthmoon_mql = a0_mql*pow((1.0+(a1_mql/alpha_mql)*1.e-9*2.*M_PI*sim->t+a2_mql*1.e-18*4.*M_PI*M_PI*sim->t*sim->t),alpha_mql);
-    double massratio = 1.0/(m_ratio_earthmoon_mql + 2.0 + 1.0/m_ratio_earthmoon_mql);
+    const int* const laskar_tides_mqq = rebx_get_param_check(&particles[i], "laskar_tides_mqq", REBX_TYPE_INT);
 
-    const double A = (-1.0/4.0)*sim->G*source.m*(f_mql)*r_earthmoon_mql*r_earthmoon_mql*massratio;
-    double H = p.m*A*pow(r2, -3./2.); // figure this out
-   
+    if (laskar_tides_mqq){
+        double a = 1.0+(9.0*a1)*1.e-9*2.*M_PI*sim->t+a2*1.e-18*4.*M_PI*M_PI*sim->t*sim->t;
+        moon_distance_mqq *= sqrt9(a);
+    }
+
+    double massratio = p.m*moon_mass_mqq/((p.m + moon_mass_mqq)*(p.m + moon_mass_mqq));
+
+    const double A = (-1.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
+
+    double H = p.m*A*(1.0/(r2*sqrt(r2)));
     return H;
 }
 
-double rebx_moon_quadrupole_laskar_hamiltonian(struct reb_simulation* const sim){ 
+double rebx_moon_quadrupole_quinn_hamiltonian(struct reb_simulation* const sim){ 
     const int N_real = sim->N - sim->N_var;
     struct reb_particle* const particles = sim->particles;
     double Htot = 0.;
     for (int i=1; i<N_real; i++){
-        const double* const f_quad = rebx_get_param_check(&particles[i], "f_quad", REBX_TYPE_DOUBLE);
-        if (f_quad != NULL){
-            const double* const moon_mass_quad = rebx_get_param_check(&particles[i], "moon_mass_quad", REBX_TYPE_DOUBLE);
-            if (moon_mass_quad != NULL){
-		        const int* const tides_quad = rebx_get_param_check(&particles[i], "tides_quad", REBX_TYPE_DOUBLE);
-		        if (tides_quad != NULL){
-                    Htot += rebx_calculate_hamiltonian(sim, *f_quad, *moon_mass_quad, *tides_quad, i);
+        const double* const f_mqq = rebx_get_param_check(&particles[i], "f_mqq", REBX_TYPE_DOUBLE);
+        if (f_mqq != NULL){
+            const double* const moon_mass_mqq = rebx_get_param_check(&particles[i], "moon_mass_mqq", REBX_TYPE_DOUBLE);
+            if (moon_mass_mqq != NULL){
+		        const double* const moon_distance_mqq = rebx_get_param_check(&particles[i], "moon_distance_mqq", REBX_TYPE_DOUBLE);
+		        if (moon_distance_mqq != NULL){
+                    Htot += rebx_calculate_hamiltonian(sim, *f_mqq, *moon_mass_mqq, *moon_distance_mqq, i);
                 }
             }
         }
     }
+    return Htot;
 }
