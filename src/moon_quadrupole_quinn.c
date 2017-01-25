@@ -73,12 +73,15 @@ static double sqrt9(double a){
     return x;
 }
 
-static void rebx_calculate_force(struct reb_simulation* const sim, const double f_mqq, const double moon_mass_mqq, double moon_distance_mqq, const int i){
+static void rebx_calculate_mqq_force(struct reb_simulation* const sim, const double f_mqq, const double moon_mass_mqq, double moon_distance_mqq, const int i){
+
+    struct reb_particle* const particles = sim->particles;
+    const struct reb_particle source = particles[0];
+    const struct reb_particle p = particles[i];
+
     double a1 = 0.10283022841433383;
     double a2 = -0.016869154631638014;
-    struct reb_particle* const particles = sim->particles;
-    const struct reb_particle source = sim->particles[0];
-    const struct reb_particle p = particles[i];
+
     const double dx = p.x - source.x;
     const double dy = p.y - source.y;
     const double dz = p.z - source.z;
@@ -93,8 +96,11 @@ static void rebx_calculate_force(struct reb_simulation* const sim, const double 
 
     double massratio = p.m*moon_mass_mqq/((p.m + moon_mass_mqq)*(p.m + moon_mass_mqq));
 
-    const double A = (-3.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
-    const double prefac = A*(1.0/(r2*r2*sqrt(r2)));
+    const double A = 1.0;
+//    const double A = (3.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
+    const double gamma = -4.0;
+    const double prefac = A*pow(r2, (gamma-1.)/2.);
+
     particles[i].ax += prefac*dx;
     particles[i].ay += prefac*dy;
     particles[i].az += prefac*dz;
@@ -113,7 +119,7 @@ void rebx_moon_quadrupole_quinn(struct reb_simulation* const sim, struct rebx_ef
             if (moon_mass_mqq != NULL){
 		        const double* const moon_distance_mqq = rebx_get_param_check(&particles[i], "moon_distance_mqq", REBX_TYPE_DOUBLE);
 		        if (moon_distance_mqq != NULL){
-                    rebx_calculate_force(sim, *f_mqq, *moon_mass_mqq, *moon_distance_mqq, i); // only calculates force if all parameters set
+                    rebx_calculate_mqq_force(sim, *f_mqq, *moon_mass_mqq, *moon_distance_mqq, i); // only calculates force if all parameters set
                 }
             }
         }
@@ -124,8 +130,9 @@ static double rebx_calculate_hamiltonian(struct reb_simulation* const sim, const
 
     double a1 = 0.10283022841433383;
     double a2 = -0.016869154631638014;
-    struct reb_particle* const particles = sim->particles;
-    const struct reb_particle source = sim->particles[0];
+    const struct reb_particle* const particles = sim->particles;
+
+    const struct reb_particle source = particles[0];
     const struct reb_particle p = particles[i];
     const double dx = p.x - source.x;
     const double dy = p.y - source.y;
@@ -141,9 +148,12 @@ static double rebx_calculate_hamiltonian(struct reb_simulation* const sim, const
 
     double massratio = p.m*moon_mass_mqq/((p.m + moon_mass_mqq)*(p.m + moon_mass_mqq));
 
-    const double A = (-1.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
+//    const double A = (-1.0/4.0)*sim->G*source.m*(f_mqq)*moon_distance_mqq*moon_distance_mqq*massratio;
+    const double A = 1.0;
+    const double gamma = -4.0;
 
-    double H = p.m*A*(1.0/(r2*sqrt(r2)));
+//    double H = p.m*A/(r2*sqrt(r2));
+    double H = -p.m*A*pow(r2, (gamma+1.)/2.)/(gamma+1.);
     return H;
 }
 

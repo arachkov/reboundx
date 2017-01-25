@@ -12,9 +12,44 @@
 #include "rebound.h"
 #include "reboundx.h"
 
+void heartbeat(struct reb_simulation* r);
+double reb_E0;
+double rebx_E0;
+double tmax = 1.e6*2.*M_PI;
+
+static double sqrt9(double a){
+    double x = 1.;
+    for (int k=0; k<20;k++){  // A smaller number should be ok too.
+        double x8 = x*x*x*x*x*x*x*x;
+        x += (a/x8-x)/9.;
+    }
+    return x;
+}
+
 int main(int argc, char* argv[]){
+
+	int procs_N = 1;
+	int procs_N_start = 0;
+	if (argc>=2){
+		procs_N = atoi(argv[1]);    
+	}
+	if (argc>=3){
+		procs_N_start = atoi(argv[2]);    
+	}
+	int proc_i;
+	for(proc_i=procs_N_start; proc_i<procs_N-1; proc_i++) {
+		int pid = fork();
+		if (pid == 0) {
+			break;
+		}
+	}
+
+	// Read initial conditions
+
+	char filename[512];
+	sprintf(filename,"notides_%04d.bin",proc_i);
+
     struct reb_simulation* sim = reb_create_simulation();
-    struct rebx_extras* rebx = rebx_init(sim);
 
     struct reb_particle star = {0};
     star.m     = 1.;   
@@ -28,11 +63,19 @@ int main(int argc, char* argv[]){
     
     struct reb_particle planet = reb_tools_orbit2d_to_particle(sim->G, star, m, a, e, omega, f);
     reb_add(sim, planet);
+
+    sim->dt = 10./365.25*2.*M_PI;    
+    sim->simulationarchive_interval = 2.*M_PI*5.1434563422923e4;
+    sim->integrator = REB_INTEGRATOR_IAS15;
+    sim->heartbeat      = heartbeat;
+
     reb_move_to_com(sim);
-    
+
+    char rebx_filename[512] = "rebx_effects_notides.bin";
+
+    struct rebx_extras* rebx = rebx_init(sim);
+
     rebx_add(rebx, "moon_quadrupole_quinn");
-    /* We first choose a power (must be a double!) for our central force (here F goes as r^-1).
-     * We then need to add it to the particle(s) that will act as central sources for this force.*/
 
     struct reb_particle* ps = sim->particles;
     double* f_mqq = rebx_add_param(&ps[1], "f_mqq", REBX_TYPE_DOUBLE);
@@ -43,35 +86,35 @@ int main(int argc, char* argv[]){
 
     double* moon_distance_mqq = rebx_add_param(&ps[1], "moon_distance_mqq", REBX_TYPE_DOUBLE);
     *moon_distance_mqq = 0.00257;
- //   int* laskar_tides_mqq = rebx_add_param(&ps[1], "laskar_tides_mqq", REBX_TYPE_INT);
- //   *laskar_tides_mqq = 1; // set to 0 to turn tides off, set to 1 to turn tides on
+//    int* laskar_tides_mqq = rebx_add_param(&ps[1], "laskar_tides_mqq", REBX_TYPE_INT);
+//    *laskar_tides_mqq = 1; // set to anything to turn tides on. comment out to set tides off.
 
-/*  old stuff
-    double* m_ratio_earthmoon_mql = rebx_add_param(&ps[1], "m_ratio_earthmoon_mql", REBX_TYPE_DOUBLE);
-    *m_ratio_earthmoon_mql = 81.3007;
+    rebx_output_binary(rebx, rebx_filename);
 
-    double* a0_mql = rebx_add_param(&ps[1], "a0_mql", REBX_TYPE_DOUBLE);
-    *a0_mql = 0.0025696;
-
-    double* a1_mql = rebx_add_param(&ps[1], "a1_mql", REBX_TYPE_DOUBLE);
-    *a1_mql = 0.101773133860118;
-
-    double* a2_mql = rebx_add_param(&ps[1], "a2_mql", REBX_TYPE_DOUBLE);
-    *a2_mql = -0.0178457555910623;
-
-    double* alpha_mql = rebx_add_param(&ps[1], "alpha_mql", REBX_TYPE_DOUBLE);
-    *alpha_mql = 0.113381622646105; // USE 1/9 AND FIT FOR OTHER PARAMETERS
-*/
-
-    /* We can also use the function rebx_central_force_Acentral to calculate the Acentral required
-     * for particles[1] (around primary particles[0]) to have a pericenter precession rate of
-     * pomegadot, given a gammacentral value: */
-    double E0 = rebx_moon_quadrupole_quinn_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
-    double tmax = 3.e4*2.*M_PI;
-    sim->integrator = REB_INTEGRATOR_IAS15;
+    reb_E0 = reb_tools_energy(sim); // relativistic hamiltonian
+    rebx_E0 = rebx_moon_quadrupole_quinn_hamiltonian(sim); // relativistic hamiltonian
+	sim->simulationarchive_filename = filename;
     reb_integrate(sim, tmax); 
-    double Ef = rebx_moon_quadrupole_quinn_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
-    printf("%e\n",(Ef-E0)/E0);
     rebx_free(rebx);    // this explicitly frees all the memory allocated by REBOUNDx 
     reb_free_simulation(sim);
+}
+
+void heartbeat(struct reb_simulation* sim){
+    if(reb_output_check(sim, 3.e3*2.*M_PI)){
+        reb_output_timing(sim, tmax);
+
+//        double a1 = 0.10283022841433383;
+//        double a2 = -0.016869154631638014;
+//        double tide_factor = sqrt9(1.0+(9.0*a1)*1.e-9*2.*M_PI*sim->t+a2*1.e-18*4.*M_PI*M_PI*sim->t*sim->t);
+//        double E0 = reb_E0 + rebx_E0*tide_factor*tide_factor;
+        double E0 = reb_E0 + rebx_E0;
+
+        double Ef = rebx_moon_quadrupole_quinn_hamiltonian(sim) + reb_tools_energy(sim); // relativistic hamiltonian
+
+        FILE* f = fopen("test_notides_relative_energy.txt","a");
+        struct reb_particle com = reb_get_com(sim);
+        fprintf(f,"%e %e %e %e \n",sim->t/(2.*M_PI), fabs((Ef-E0)/E0), com.x, com.y);
+        fclose(f);
+
+    }
 }
